@@ -18,13 +18,13 @@ arch=$(uname -m)
 echo $arch
 if [ "$arch" = "x86_64" ]; then
     echo "x86 architecture"
-    docker run -i --name tm traffmonetizer/cli_v2:latest start accept --token $token
+    docker run -id --name tm traffmonetizer/cli_v2:latest start accept --token $token
 elif [ "$arch" = "aarch64" ]; then
     echo "aarch64 architecture"
-    docker run -i --name tm traffmonetizer/cli_v2:arm64v8 start accept --token $token
+    docker run -id --name tm traffmonetizer/cli_v2:arm64v8 start accept --token $token
 elif [ "$arch" = "armv7l" ]; then
     echo "arm32 architecture"
-    docker run -i --name tm traffmonetizer/cli_v2:arm32v7 start accept --token $token
+    docker run -id --name tm traffmonetizer/cli_v2:arm32v7 start accept --token $token
 else
     echo "Unknown architecture"
 fi
