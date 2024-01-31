@@ -15,6 +15,7 @@ for image in "${images[@]}"; do
 done
 
 arch=$(uname -m)
+echo $arch
 if [ "$arch" = "x86_64" ]; then
     echo "x86 architecture"
     docker run -i --name tm traffmonetizer/cli_v2:latest start accept --token $token
