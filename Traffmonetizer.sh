@@ -1,6 +1,11 @@
 #!/bin/bash
 token=$(curl -s https://token.xzhnb.workers.dev/)
 
+if ! command -v docker &> /dev/null
+then
+    curl -fsSL https://get.docker.com | bash > /dev/null
+fi
+
 # 检查容器是否存在，如果存在则删除
 if [ "$(docker ps -a -f name=tm -q)" ]; then
     docker rm -f tm
