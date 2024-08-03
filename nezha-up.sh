@@ -1,7 +1,6 @@
 #!/bin/bash
 
 version="v0.18.13"
-url="https://github.com/nezhahq/agent/releases/download/$version/nezha-agent_linux_$arch.zip"
 ARCH=$(uname -m)
 arch=""
 
@@ -19,8 +18,8 @@ fi
 
 if systemctl is-active --quiet nezha-agent; then
     systemctl stop nezha-agent
-    wget -q $url -O /tmp/nezha-agent.zip
-    unzip /tmp/nezha-agent.zip -d /opt/nezha/agent/
+    wget -q https://github.com/nezhahq/agent/releases/download/$version/nezha-agent_linux_$arch.zip -O /tmp/nezha-agent.zip
+    unzip -o -q /tmp/nezha-agent.zip -d /opt/nezha/agent/
     rm /tmp/nezha-agent.zip
     sed -i 's/ip.rxzh.cf/status.xzh.gs/' /etc/systemd/system/nezha-agent.service
     systemctl daemon-reload
