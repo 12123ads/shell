@@ -2,9 +2,9 @@
 
 version="v0.18.13"
 url="https://github.com/nezhahq/agent/releases/download/$version/nezha-agent_linux_$arch.zip"
-
 ARCH=$(uname -m)
 arch=""
+
 if [ "$ARCH" = "aarch64" ]; then
     arch="arm64"
 else
