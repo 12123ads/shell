@@ -11,7 +11,7 @@ else
     arch="amd64"
 fi
 
-if grep -q --disable-auto-update /etc/systemd/system/nezha-agent.service; then
+if grep -q "--disable-auto-update" /etc/systemd/system/nezha-agent.service; then
     echo "--disable-auto-update exists in nezha-agent.service"
 else
     sed -i 's/--tls/--tls --disable-auto-update/' /etc/systemd/system/nezha-agent.service
