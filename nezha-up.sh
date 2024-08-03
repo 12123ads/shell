@@ -16,7 +16,7 @@ if systemctl is-active --quiet nezha-agent; then
     unzip -o -q /tmp/nezha-agent.zip -d /opt/nezha/agent/
     rm /tmp/nezha-agent.zip
     sed -i 's/ip.rxzh.cf/status.xzh.gs/' /etc/systemd/system/nezha-agent.service
-    if grep -q -F "--disable-auto-update" /etc/systemd/system/nezha-agent.service; then
+    if grep -q -- "--disable-auto-update" /etc/systemd/system/nezha-agent.service; then
         echo "--disable-auto-update exists in nezha-agent.service"
     else
         sed -i 's/--tls/--tls --disable-auto-update/' /etc/systemd/system/nezha-agent.service
