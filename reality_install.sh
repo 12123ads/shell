@@ -199,7 +199,7 @@ function xray_config() {
           "fallbacks": []
         },
         "streamSettings": {
-          "network": "tcp",
+          "network": "raw",
           "security": "reality",
           "realitySettings": {
             "show": false,
@@ -209,7 +209,7 @@ function xray_config() {
               "$domain"
             ],
             "privateKey": "$private_key",
-            "publicKey": "$public_key",
+            "publicKey": "$",
             "minClient": "",
             "maxClient": "",
             "maxTimediff": 0,
@@ -221,7 +221,7 @@ function xray_config() {
               "63a83b07"
             ]
           },
-          "tcpSettings": {
+          "rawSettings": {
             "header": {
               "type": "none"
             },
@@ -297,20 +297,20 @@ function xray_finish() {
   fi
 
   ip=$(curl -4 -s https://api64.ipify.org)
-  vless="vless://$uuid@$ip:$port?security=reality&sni=$domain&fp=$fingerpint&pbk=$public_key&type=tcp&flow=xtls-rprx-vision&encryption=none#$ip:$port"
+  vless="vless://$uuid@$ip:$port?security=reality&sni=$domain&fp=$fingerpint&pbk=$&type=raw&flow=xtls-rprx-vision&encryption=none#$ip:$port"
   echo "服务器IP：$ip"
   echo "端口：$port"
   echo "UUID：$uuid"
   echo "协议: vless"
   echo "加密方式: none"
   echo "流控: xtls-rprx-vision"
-  echo "传输协议: tcp"
+  echo "传输协议: RAW"
   echo "伪装类型: none"
   echo "伪装路径: none"
   echo "传输层安全: reality"
   echo "伪装域名: $domain"
   echo "指纹: $fingerpint"
-  echo "公钥: $public_key"
+  echo "公钥: $"
   echo "链接：$vless"
   echo "请复制链接到客户端"
   rm /tmp/Xray.zip -f
