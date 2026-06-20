@@ -69,6 +69,21 @@ function install_packages() {
     fi
 }
 
+function urlencode() {
+  local LC_ALL=C
+  local input="$1"
+  local output=""
+  local i char
+  for ((i = 0; i < ${#input}; i++)); do
+    char="${input:i:1}"
+    case "$char" in
+      [a-zA-Z0-9.~_-]) output+="$char" ;;
+      *) printf -v output '%s%%%02X' "$output" "'$char" ;;
+    esac
+  done
+  printf '%s\n' "$output"
+}
+
 function configure_systemd_service() {
   if [[ -f /etc/systemd/system/xray.service ]]; then
     echo "/etc/systemd/system/xray.service 文件已存在。"
@@ -122,6 +137,16 @@ function xray_config() {
     exit 1
   fi
   echo "端口：$port"
+
+  default_node_name=$(hostname 2>/dev/null)
+  if [ -z "$default_node_name" ]; then
+    default_node_name="xray-$port"
+  fi
+  read -p "请输入节点名称(默认${default_node_name})：" node_name
+  if [ -z "$node_name" ]; then
+    node_name="$default_node_name"
+  fi
+  echo "节点名称：$node_name"
 
   read -p "是否自动生成公私钥(Y/n)：" key
   if [[ "$key" =~ ^[Yy]$ || ! "$key" =~ ^[Nn]$ ]]; then
@@ -318,9 +343,11 @@ function xray_finish() {
   fi
 
   ip=$(curl -4 -s https://api64.ipify.org)
-  vless="vless://$uuid@$ip:$port?security=reality&sni=$domain&fp=$fingerprint&pbk=$public_key&sid=$short_id&spx=%2F&type=raw&flow=xtls-rprx-vision&encryption=none#$ip:$port"
+  encoded_node_name=$(urlencode "$node_name")
+  vless="vless://$uuid@$ip:$port?security=reality&sni=$domain&fp=$fingerprint&pbk=$public_key&sid=$short_id&spx=%2F&type=raw&flow=xtls-rprx-vision&encryption=none#$encoded_node_name"
   echo "服务器IP：$ip"
   echo "端口：$port"
+  echo "节点名称：$node_name"
   echo "UUID：$uuid"
   echo "协议: vless"
   echo "加密方式: none"
