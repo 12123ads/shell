@@ -6,7 +6,7 @@ function check() {
         echo "错误：必须使用root用户运行此脚本！"
         exit 1
     fi
-    if ![pidof systemd > /dev/null]; then
+    if ! pidof systemd > /dev/null; then
         echo "系统不支持systemd"
         exit 1
     fi
@@ -41,7 +41,7 @@ function xray_install_path() {
   if [ -n "$input_path" ]; then
         xray_path="$input_path"
     fi
-  if [ -f "$xray_path" ]; then
+  if [ -e "$xray_path" ]; then
       echo "目标文件已存在：$xray_path"
       exit 1
   fi
@@ -67,16 +67,16 @@ function install_xray() {
     echo "/etc/systemd/system/xray.service 文件已存在。"
   else
     cat > /etc/systemd/system/xray.service << EOF
-    [Unit]
-    Description=Xray
-  
-    [Service]
-    ExecStart=$xray_path/xray -c config.json
-    WorkingDirectory=$xray_path
-    Restart=on-failure
-  
-    [Install]
-    WantedBy=default.target
+[Unit]
+Description=Xray
+
+[Service]
+ExecStart=$xray_path/xray -c config.json
+WorkingDirectory=$xray_path
+Restart=on-failure
+
+[Install]
+WantedBy=default.target
 EOF
     echo "/etc/systemd/system/xray.service 文件已创建。"
   fi
@@ -108,14 +108,21 @@ function xray_config() {
   if [[ "$key" =~ ^[Yy]$ || ! "$key" =~ ^[Nn]$ ]]; then
     # 使用xray x25519生成公私钥并解析值
     key=$($xray_path/xray x25519)
-    private_key=$(echo "$key" | grep -oP 'Private key: \K[^ ]+')
-    public_key=$(echo "$key" | grep -oP 'Public key: \K[^ ]+')
+    private_key=$(echo "$key" | awk -F': ' '/Private key/ {print $2}')
+    public_key=$(echo "$key" | awk -F': ' '/Public key/ {print $2}')
     echo "公钥为：$public_key"
     echo "私钥为：$private_key"
   else
     read -p "请输入公钥:" public_key
     read -p "请输入私钥:" private_key
   fi
+  if [[ -z "$private_key" || -z "$public_key" ]]; then
+    echo "错误：公私钥不能为空。"
+    exit 1
+  fi
+
+  short_id=$(od -An -N8 -tx1 /dev/urandom | tr -d ' \n')
+  echo "shortId为：$short_id"
 
   echo "预设伪装域名：1.addons.mozilla.org 2.icloud.cdn-apple.com 3.dl.google.com 4.自定义伪装域名"
   read -p "请选择伪装域名(默认2):" domain
@@ -129,20 +136,20 @@ function xray_config() {
   echo "伪装域名：$domain"
 
   echo "选择指纹: 1.firefox 2.chrome 3.360 4.qq 5.edge 6.android 7.safari 8.ios"
-  read -p "请选择或输入自定义指纹(默认8):" fingerpint
-  case "$fingerpint" in
-      1) fingerpint="firefox" ;;
-      2) fingerpint="chrome" ;;
-      3) fingerpint="360" ;;
-      4) fingerpint="qq" ;;
-      5) fingerpint="edge" ;;
-      6) fingerpint="android" ;;
-      7) fingerpint="safari" ;;
-      8) fingerpint="ios" ;;
-      *) fingerpint="ios";echo "选择(8)" ;;
+  read -p "请选择或输入自定义指纹(默认8):" fingerprint
+  case "$fingerprint" in
+      1) fingerprint="firefox" ;;
+      2) fingerprint="chrome" ;;
+      3) fingerprint="360" ;;
+      4) fingerprint="qq" ;;
+      5) fingerprint="edge" ;;
+      6) fingerprint="android" ;;
+      7) fingerprint="safari" ;;
+      8) fingerprint="ios" ;;
+      *) fingerprint="ios";echo "选择(8)" ;;
   esac
   echo "生成配置文件"
-  cat > $xray_path/config.json << EOF
+  cat > "$xray_path/config.json" << EOF
   {
     "log": null,
     "routing": {
@@ -203,22 +210,17 @@ function xray_config() {
           "security": "reality",
           "realitySettings": {
             "show": false,
-            "dest": "$domain:443",
+            "target": "$domain:443",
             "xver": 0,
             "serverNames": [
               "$domain"
             ],
             "privateKey": "$private_key",
-            "publicKey": "$",
-            "minClient": "",
-            "maxClient": "",
-            "maxTimediff": 0,
+            "minClientVer": "",
+            "maxClientVer": "",
+            "maxTimeDiff": 0,
             "shortIds": [
-              "",
-              "14",
-              "d580",
-              "aa4bde",
-              "63a83b07"
+              "$short_id"
             ]
           },
           "rawSettings": {
@@ -228,7 +230,7 @@ function xray_config() {
             "acceptProxyProtocol": false
           }
         },
-        "tag": "inbound-8080",
+        "tag": "inbound-$port",
         "sniffing": {
           "enabled": true,
           "destOverride": [
@@ -297,7 +299,7 @@ function xray_finish() {
   fi
 
   ip=$(curl -4 -s https://api64.ipify.org)
-  vless="vless://$uuid@$ip:$port?security=reality&sni=$domain&fp=$fingerpint&pbk=$&type=raw&flow=xtls-rprx-vision&encryption=none#$ip:$port"
+  vless="vless://$uuid@$ip:$port?security=reality&sni=$domain&fp=$fingerprint&pbk=$public_key&sid=$short_id&spx=%2F&type=raw&flow=xtls-rprx-vision&encryption=none#$ip:$port"
   echo "服务器IP：$ip"
   echo "端口：$port"
   echo "UUID：$uuid"
@@ -309,8 +311,9 @@ function xray_finish() {
   echo "伪装路径: none"
   echo "传输层安全: reality"
   echo "伪装域名: $domain"
-  echo "指纹: $fingerpint"
-  echo "公钥: $"
+  echo "指纹: $fingerprint"
+  echo "公钥: $public_key"
+  echo "shortId: $short_id"
   echo "链接：$vless"
   echo "请复制链接到客户端"
   rm /tmp/Xray.zip -f
