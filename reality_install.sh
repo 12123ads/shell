@@ -37,13 +37,26 @@ function check() {
 
 function xray_install_path() {
   xray_path="/opt/xray"
+  reinstall_xray=1
   read -p "请输入Xray安装路径(默认/opt/xray)" input_path
   if [ -n "$input_path" ]; then
         xray_path="$input_path"
     fi
-  if [ -e "$xray_path" ]; then
-      echo "目标文件已存在：$xray_path"
+  if [ -e "$xray_path" ] && [ ! -d "$xray_path" ]; then
+      echo "目标路径不是目录：$xray_path"
       exit 1
+  fi
+  if [ -x "$xray_path/xray" ]; then
+      installed_version=$("$xray_path/xray" version 2>/dev/null | head -n 1)
+      echo "检测到已安装Xray：$xray_path/xray"
+      if [ -n "$installed_version" ]; then
+          echo "$installed_version"
+      fi
+      read -p "是否重新下载安装Xray？(y/N)" reinstall_confirm
+      if [[ ! "$reinstall_confirm" =~ ^[Yy]$ ]]; then
+          reinstall_xray=0
+          echo "跳过Xray重新安装，继续生成配置。"
+      fi
   fi
 }
 
@@ -56,13 +69,7 @@ function install_packages() {
     fi
 }
 
-function install_xray() {
-  echo "开始下载Xray"
-  latest_release=$(curl -s https://api.github.com/repos/XTLS/Xray-core/releases/latest)
-  version=$(echo $latest_release | jq -r '.tag_name')
-  wget -q --show-progress --progress=bar:force -O /tmp/Xray.zip https://github.com/XTLS/Xray-core/releases/download/$version/Xray-linux-$arch.zip
-  unzip /tmp/Xray.zip -d $xray_path
-  chmod +x $xray_path/xray
+function configure_systemd_service() {
   if [[ -f /etc/systemd/system/xray.service ]]; then
     echo "/etc/systemd/system/xray.service 文件已存在。"
   else
@@ -80,10 +87,22 @@ WantedBy=default.target
 EOF
     echo "/etc/systemd/system/xray.service 文件已创建。"
   fi
+  systemctl daemon-reload
   read -p "Systemd守护进程写入完成，是否开机自启动？(Y/n)" auto_start
   if [ "$auto_start" == "Y" ]||[ "$auto_start" == "y" ]; then
       systemctl enable xray
   fi
+}
+
+function install_xray() {
+  echo "开始下载Xray"
+  latest_release=$(curl -s https://api.github.com/repos/XTLS/Xray-core/releases/latest)
+  version=$(echo $latest_release | jq -r '.tag_name')
+  mkdir -p "$xray_path"
+  wget -q --show-progress --progress=bar:force -O /tmp/Xray.zip https://github.com/XTLS/Xray-core/releases/download/$version/Xray-linux-$arch.zip
+  unzip -o /tmp/Xray.zip -d "$xray_path"
+  chmod +x "$xray_path/xray"
+  configure_systemd_service
 }
 
 function xray_config() {
@@ -107,9 +126,9 @@ function xray_config() {
   read -p "是否自动生成公私钥(Y/n)：" key
   if [[ "$key" =~ ^[Yy]$ || ! "$key" =~ ^[Nn]$ ]]; then
     # 使用xray x25519生成公私钥并解析值
-    key=$($xray_path/xray x25519)
-    private_key=$(echo "$key" | awk -F': ' '/Private key/ {print $2}')
-    public_key=$(echo "$key" | awk -F': ' '/Public key/ {print $2}')
+    key=$("$xray_path/xray" x25519 2>&1)
+    private_key=$(printf '%s\n' "$key" | awk -F':[[:space:]]*' 'tolower($1) ~ /private/ {print $2; exit}')
+    public_key=$(printf '%s\n' "$key" | awk -F':[[:space:]]*' 'tolower($1) ~ /public/ {print $2; exit}')
     echo "公钥为：$public_key"
     echo "私钥为：$private_key"
   else
@@ -322,6 +341,10 @@ function xray_finish() {
 check
 xray_install_path
 install_packages
-install_xray
+if [ "$reinstall_xray" -eq 1 ]; then
+  install_xray
+else
+  configure_systemd_service
+fi
 xray_config
 xray_finish
