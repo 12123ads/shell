@@ -143,14 +143,14 @@ function xray_config() {
   short_id=$(od -An -N8 -tx1 /dev/urandom | tr -d ' \n')
   echo "shortId为：$short_id"
 
-  echo "预设伪装域名：1.addons.mozilla.org 2.icloud.cdn-apple.com 3.dl.google.com 4.自定义伪装域名"
+  echo "预设伪装域名：1.addons.mozilla.org 2.bunny.net 3.dl.google.com 4.自定义伪装域名"
   read -p "请选择伪装域名(默认2):" domain
   case "$domain" in
     1) domain="addons.mozilla.org" ;;
-    2) domain="icloud.cdn-apple.com" ;;
+    2) domain="bunny.net" ;;
     3) domain="dl.google.com" ;;
     4) read -p "请输入自定义伪装域名:" domain ;;
-    *) domain="icloud.cdn-apple.com";echo "选择(2)" ;;
+    *) domain="bunny.net";echo "选择(2)" ;;
   esac
   echo "伪装域名：$domain"
 
